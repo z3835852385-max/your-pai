@@ -3,219 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>圆周率数字串检索器 🥧</title>
+    <title>Pi Finder</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .custom-shadow {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 12px 40px rgba(0,0,0,0.03);
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex items-center justify-center p-4 md:p-8">
+<body class="bg-neutral-50 text-neutral-800 min-h-screen flex items-center justify-center p-4 sm:p-6 selection:bg-neutral-200">
 
-    <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 md:p-8 w-full max-w-lg transition-all duration-300">
-        <div class="text-center mb-6">
-            <span class="text-4xl">🥧</span>
-            <h1 class="text-2xl font-bold text-slate-900 mt-2">圆周率数字串检索器</h1>
-            <p class="text-sm text-slate-500 mt-1">在小数点后百万位中，寻找属于你的数字密码</p>
-        </div>
-
-        <div class="mb-6">
-            <div id="statusBadge" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse" id="statusDot"></span>
-                <span id="statusText">正在读取圆周率数据...</span>
-            </div>
-            
-            <!-- 诊断错误面板（默认隐藏，仅在出错时显示） -->
-            <div id="diagnosticPanel" class="hidden mt-4 p-4 bg-rose-50 border border-rose-200 rounded-xl text-left">
-                <h3 class="text-sm font-bold text-rose-800 flex items-center gap-1">
-                    ⚠️ 诊断报告 (Why it failed):
-                </h3>
-                <p id="errorDescription" class="text-xs text-rose-700 mt-1 leading-relaxed font-medium"></p>
-                <div class="mt-3 pt-3 border-t border-rose-200 text-xs text-rose-600 space-y-1" id="solutionGuides">
-                    <!-- 动态生成解决步骤 -->
+    <div class="w-full max-w-lg bg-white rounded-3xl border border-neutral-100 p-8 sm:p-10 custom-shadow transition-all duration-300">
+        
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center text-white font-serif text-lg font-bold">π</div>
+                <div>
+                    <h1 class="text-lg font-semibold tracking-tight text-neutral-900">Pi Finder</h1>
+                    <p class="text-xs text-neutral-400">圆周率位数字检索</p>
                 </div>
             </div>
+            <div id="status" class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                <span>加载数据中</span>
+            </div>
         </div>
 
-        <div class="space-y-4">
+        <div class="space-y-6">
             <div>
-                <label for="userInput" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">请输入 2-20 位指定数字</label>
-                <input 
-                    type="text" 
-                    id="userInput" 
-                    placeholder="例如：你的生日 19950824" 
-                    maxlength="20" 
-                    disabled
-                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-center text-lg font-semibold tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                >
+                <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">输入目标数字串 (2-20位)</label>
+                <div class="relative">
+                    <input type="text" id="userInput" placeholder="例如: 520" maxlength="20" disabled
+                        class="w-full px-5 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl text-lg font-medium text-center text-neutral-900 placeholder-neutral-300 focus:outline-none focus:border-neutral-900 focus:bg-white transition-all tracking-widest">
+                </div>
             </div>
-            
-            <button 
-                id="searchBtn" 
-                onclick="searchPi()" 
-                disabled
-                class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition shadow-lg shadow-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-            >
-                开始查找
+
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs text-neutral-400 mr-1">快捷测试:</span>
+                <button onclick="setQuery('5201314')" class="px-3 py-1.5 text-xs bg-neutral-50 hover:bg-neutral-100 text-neutral-600 rounded-lg transition-colors">5201314</button>
+                <button onclick="setQuery('114514')" class="px-3 py-1.5 text-xs bg-neutral-50 hover:bg-neutral-100 text-neutral-600 rounded-lg transition-colors">114514</button>
+                <button onclick="setQuery('1998')" class="px-3 py-1.5 text-xs bg-neutral-50 hover:bg-neutral-100 text-neutral-600 rounded-lg transition-colors">1998</button>
+                <button onclick="setQuery('8888')" class="px-3 py-1.5 text-xs bg-neutral-50 hover:bg-neutral-100 text-neutral-600 rounded-lg transition-colors">8888</button>
+            </div>
+
+            <button id="searchBtn" onclick="searchPi()" disabled
+                class="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-medium py-4 px-6 rounded-2xl transition-all duration-200 transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed">
+                立即查找位置
             </button>
         </div>
 
-        <div id="result" class="mt-6 hidden transition-all duration-300">
-            <!-- 检索结果动态注入 -->
+        <div id="resultWrapper" class="mt-8 pt-8 border-t border-neutral-50 hidden">
+            <div id="resultContent" class="space-y-4"></div>
         </div>
     </div>
 
     <script>
-        let piData = ""; 
-        const statusBadge = document.getElementById('statusBadge');
-        const statusDot = document.getElementById('statusDot');
-        const statusText = document.getElementById('statusText');
+        let piData = "";
+        const statusEl = document.getElementById('status');
         const inputEl = document.getElementById('userInput');
         const buttonEl = document.getElementById('searchBtn');
-        const resultEl = document.getElementById('result');
-        const diagnosticPanel = document.getElementById('diagnosticPanel');
-        const errorDescription = document.getElementById('errorDescription');
-        const solutionGuides = document.getElementById('solutionGuides');
+        const resultWrapper = document.getElementById('resultWrapper');
+        const resultContent = document.getElementById('resultContent');
 
-        // 页面初始化加载数据
         window.addEventListener('DOMContentLoaded', () => {
-            // 拦截检查：如果是直接双击 file:// 打开的，直接报错预警
-            if (window.location.protocol === 'file:') {
-                triggerDiagnosticError(
-                    "本地跨域限制", 
-                    "你当前是通过双击直接打开的 HTML 文件（地址栏是 file://）。由于现代浏览器的安全沙箱机制，不允许静态网页直接读取你本地磁盘上的其他文件（即使在同一个文件夹下也不行）。",
-                    [
-                        "💡 <b>最简单的解决方法：</b>将 <code>index.html</code> 和 <code>pai.txt</code> 一起上传到 GitHub 仓库并开启 GitHub Pages 部署，在线上（https）访问绝对不会有这个报错！",
-                        "💡 <b>本地调试方法：</b>在编辑器中使用本地服务，例如 VS Code 的 Live Server 插件打开网页。"
-                    ]
-                );
-                return;
-            }
-
             fetch('pai.txt')
                 .then(response => {
-                    // 如果返回 404 说明找不到文件
-                    if (response.status === 404) {
-                        throw new Error("404_NOT_FOUND");
-                    }
-                    if (!response.ok) {
-                        throw new Error(`HTTP_ERROR_${response.status}`);
-                    }
+                    if (!response.ok) throw new Error('Load failed');
                     return response.text();
                 })
                 .then(text => {
-                    // 清洗数据
-                    piData = text.replace(/\s/g, ''); 
+                    piData = text.replace(/[^0-9]/g, '');
                     
-                    if (piData.length < 10) {
-                        throw new Error("EMPTY_OR_CORRUPT_FILE");
-                    }
-                    
-                    // 激活界面
-                    statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
-                    statusBadge.className = "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";
-                    statusText.innerText = `数据已就绪 (共 ${piData.length.toLocaleString()} 位)`;
+                    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span>已载入 ${piData.length.toLocaleString()} 位`;
+                    statusEl.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700";
                     inputEl.disabled = false;
                     buttonEl.disabled = false;
                 })
-                .catch(err => {
-                    if (err.message === "404_NOT_FOUND") {
-                        triggerDiagnosticError(
-                            "文件未找到 (404 Error)",
-                            "网页无法在同级目录下找到名为 <code>pai.txt</code> 的文件。请检查你的文件名和后缀是否完全匹配。",
-                            [
-                                "📌 <b>常见原因 1：</b>Windows 系统默认隐藏了文件后缀。你可能把文件命名为了 <code>pai.txt.txt</code>（其实你多写了一个 .txt 后缀）。请在文件夹的「查看」中勾选「文件扩展名」进行检查。",
-                                "📌 <b>常见原因 2：</b>文件名大小写不一致。服务器对大小写极度敏感，请确保全小写 <code>pai.txt</code>，不要写成 <code>Pai.txt</code> 或 <code>PAI.txt</code>。"
-                            ]
-                        );
-                    } else if (err.message === "EMPTY_OR_CORRUPT_FILE") {
-                        triggerDiagnosticError(
-                            "空文件或格式错误",
-                            "成功读取了 <code>pai.txt</code>，但是里面没有获取到有效的圆周率数字，或者数字位数太少。",
-                            [
-                                "📌 请打开 <code>pai.txt</code> 检查里面是否确实粘贴了 100 万位的纯数字（例如：1415926535...）。"
-                            ]
-                        );
-                    } else {
-                        triggerDiagnosticError(
-                            "网络或跨域拦截",
-                            `加载文件时遇到了未知的网络异常。系统抛出的原始错误信息：<code class="bg-rose-100 px-1 py-0.5 rounded">${err.message}</code>`,
-                            [
-                                "📌 建议打开浏览器的开发者工具（按 F12 或 右键检查 -> 选择 Console 标签页），里面会有一行红色的报错，通常会写明是 CORS（跨域）问题还是别的问题。"
-                            ]
-                        );
-                    }
+                .catch(error => {
+                    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span>载入失败`;
+                    statusEl.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700";
                 });
         });
 
-        // 触发诊断错误面板
-        function triggerDiagnosticError(title, desc, guides) {
-            statusDot.className = "w-2 h-2 rounded-full bg-rose-500";
-            statusBadge.className = "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200";
-            statusText.innerText = "数据加载失败！";
-            
-            diagnosticPanel.classList.remove('hidden');
-            errorDescription.innerHTML = `<strong>[${title}]</strong> ${desc}`;
-            
-            solutionGuides.innerHTML = "";
-            guides.forEach(guide => {
-                const li = document.createElement('div');
-                li.className = "py-1.5 border-b border-rose-100 last:border-0";
-                li.innerHTML = guide;
-                solutionGuides.appendChild(li);
-            });
+        function setQuery(val) {
+            if (inputEl.disabled) return;
+            inputEl.value = val;
+            searchPi();
         }
 
-        // 检索逻辑
         function searchPi() {
             const query = inputEl.value.trim();
-            resultEl.innerHTML = "";
-            resultEl.classList.remove('hidden');
+            resultWrapper.classList.add('hidden');
+            resultContent.innerHTML = "";
 
             if (!/^\d+$/.test(query)) {
-                showResultBox(false, "❌ 格式错误：请输入纯数字。");
+                showFeedback("请输入纯数字格式", false);
                 return;
             }
-
             if (query.length < 2 || query.length > 20) {
-                showResultBox(false, "❌ 长度错误：数字长度必须在 2 到 20 位之间。");
+                showFeedback("长度需在 2-20 位之间", false);
                 return;
             }
 
             const index = piData.indexOf(query);
 
             if (index === -1) {
-                showResultBox(false, `🔍 在当前前 ${piData.length.toLocaleString()} 位数据中，<strong>未找到</strong>数字串 [${query}]。`);
+                resultContent.innerHTML = `
+                    <div class="p-5 rounded-2xl bg-neutral-50 border border-neutral-100 text-center">
+                        <p class="text-sm text-neutral-500">在当前前 ${piData.length.toLocaleString()} 位中，未找到此数字串。</p>
+                    </div>
+                `;
             } else {
                 const startPos = index + 1;
                 const endPos = index + query.length;
 
-                const contextStart = Math.max(0, index - 5);
-                const contextEnd = Math.min(piData.length, index + query.length + 5);
-                
+                const contextStart = Math.max(0, index - 6);
+                const contextEnd = Math.min(piData.length, index + query.length + 6);
                 const beforeStr = piData.substring(contextStart, index);
                 const afterStr = piData.substring(index + query.length, contextEnd);
-                const preview = `...${beforeStr}<span class="bg-amber-200 text-amber-950 px-1 rounded font-bold">${query}</span>${afterStr}...`;
 
-                showResultBox(true, `
-                    <div class="text-emerald-800 font-semibold mb-2">🎉 查找成功！</div>
-                    <div class="text-sm">数字串 <code class="bg-emerald-100 px-1 py-0.5 rounded font-mono text-emerald-950">${query}</code> 位于：</div>
-                    <div class="text-xl font-bold my-2 text-slate-900">第 ${startPos.toLocaleString()} 位 到 第 ${endPos.toLocaleString()} 位</div>
-                    <div class="text-xs text-slate-500 mt-3 pt-3 border-t border-emerald-100">上下文预览：<span class="font-mono">${preview}</span></div>
-                `);
+                resultContent.innerHTML = `
+                    <div class="p-6 rounded-2xl bg-neutral-50 border border-neutral-100 space-y-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-xs font-medium text-neutral-400">起始位置</span>
+                                <p class="text-3xl font-semibold text-neutral-900 mt-1">${startPos.toLocaleString()}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-medium text-neutral-400">结束位置</span>
+                                <p class="text-3xl font-semibold text-neutral-900 mt-1">${endPos.toLocaleString()}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-neutral-200/50">
+                            <span class="text-xs font-medium text-neutral-400 block mb-2">上下文预览</span>
+                            <div class="font-mono text-sm tracking-wider text-neutral-500 bg-white border border-neutral-100 px-4 py-3 rounded-xl flex justify-between items-center">
+                                <span>...${beforeStr}<span class="bg-neutral-900 text-white px-1.5 py-0.5 rounded-md font-bold">${query}</span>${afterStr}...</span>
+                                <button onclick="copyResult('${startPos}', '${endPos}')" class="text-neutral-400 hover:text-neutral-900 ml-3 transition-colors" title="复制结果">
+                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                lucide.createIcons();
             }
+            resultWrapper.classList.remove('hidden');
         }
 
-        function showResultBox(isSuccess, htmlContent) {
-            resultEl.className = isSuccess 
-                ? "mt-6 p-5 bg-emerald-50 border border-emerald-200 rounded-xl text-left" 
-                : "mt-6 p-5 bg-rose-50 border border-rose-200 rounded-xl text-left text-rose-800 text-sm";
-            resultEl.innerHTML = htmlContent;
+        function showFeedback(msg, isSuccess) {
+            resultContent.innerHTML = `
+                <div class="p-5 rounded-2xl border text-center ${isSuccess ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-800'}">
+                    <p class="text-sm font-medium">${msg}</p>
+                </div>
+            `;
+            resultWrapper.classList.remove('hidden');
         }
 
-        // 回车键快捷键
+        function copyResult(start, end) {
+            const textToCopy = `在圆周率第 ${start} 位至 ${end} 位找到了我查询的数字！`;
+            const tempInput = document.createElement("input");
+            tempInput.value = textToCopy;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-neutral-900 text-white text-xs px-4 py-2.5 rounded-full shadow-lg z-50 animate-bounce';
+            toast.innerText = '结果已复制到剪贴板';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
         inputEl.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !buttonEl.disabled) {
                 searchPi();
