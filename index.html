@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圆周率数字串检索器 🥧</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex items-center justify-center p-4 md:p-8">
+
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 md:p-8 w-full max-w-lg transition-all duration-300">
+        <div class="text-center mb-6">
+            <span class="text-4xl">🥧</span>
+            <h1 class="text-2xl font-bold text-slate-900 mt-2">圆周率数字串检索器</h1>
+            <p class="text-sm text-slate-500 mt-1">在小数点后百万位中，寻找属于你的数字密码</p>
+        </div>
+
+        <div class="mb-6">
+            <div id="statusBadge" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse" id="statusDot"></span>
+                <span id="statusText">正在读取圆周率数据...</span>
+            </div>
+            
+            <!-- 诊断错误面板（默认隐藏，仅在出错时显示） -->
+            <div id="diagnosticPanel" class="hidden mt-4 p-4 bg-rose-50 border border-rose-200 rounded-xl text-left">
+                <h3 class="text-sm font-bold text-rose-800 flex items-center gap-1">
+                    ⚠️ 诊断报告 (Why it failed):
+                </h3>
+                <p id="errorDescription" class="text-xs text-rose-700 mt-1 leading-relaxed font-medium"></p>
+                <div class="mt-3 pt-3 border-t border-rose-200 text-xs text-rose-600 space-y-1" id="solutionGuides">
+                    <!-- 动态生成解决步骤 -->
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label for="userInput" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">请输入 2-20 位指定数字</label>
+                <input 
+                    type="text" 
+                    id="userInput" 
+                    placeholder="例如：你的生日 19950824" 
+                    maxlength="20" 
+                    disabled
+                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-center text-lg font-semibold tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+            </div>
+            
+            <button 
+                id="searchBtn" 
+                onclick="searchPi()" 
+                disabled
+                class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition shadow-lg shadow-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+            >
+                开始查找
+            </button>
+        </div>
+
+        <div id="result" class="mt-6 hidden transition-all duration-300">
+            <!-- 检索结果动态注入 -->
+        </div>
+    </div>
+
+    <script>
+        let piData = ""; 
+        const statusBadge = document.getElementById('statusBadge');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const inputEl = document.getElementById('userInput');
+        const buttonEl = document.getElementById('searchBtn');
+        const resultEl = document.getElementById('result');
+        const diagnosticPanel = document.getElementById('diagnosticPanel');
+        const errorDescription = document.getElementById('errorDescription');
+        const solutionGuides = document.getElementById('solutionGuides');
+
+        // 页面初始化加载数据
+        window.addEventListener('DOMContentLoaded', () => {
+            // 拦截检查：如果是直接双击 file:// 打开的，直接报错预警
+            if (window.location.protocol === 'file:') {
+                triggerDiagnosticError(
+                    "本地跨域限制", 
+                    "你当前是通过双击直接打开的 HTML 文件（地址栏是 file://）。由于现代浏览器的安全沙箱机制，不允许静态网页直接读取你本地磁盘上的其他文件（即使在同一个文件夹下也不行）。",
+                    [
+                        "💡 <b>最简单的解决方法：</b>将 <code>index.html</code> 和 <code>pai.txt</code> 一起上传到 GitHub 仓库并开启 GitHub Pages 部署，在线上（https）访问绝对不会有这个报错！",
+                        "💡 <b>本地调试方法：</b>在编辑器中使用本地服务，例如 VS Code 的 Live Server 插件打开网页。"
+                    ]
+                );
+                return;
+            }
+
+            fetch('pai.txt')
+                .then(response => {
+                    // 如果返回 404 说明找不到文件
+                    if (response.status === 404) {
+                        throw new Error("404_NOT_FOUND");
+                    }
+                    if (!response.ok) {
+                        throw new Error(`HTTP_ERROR_${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(text => {
+                    // 清洗数据
+                    piData = text.replace(/\s/g, ''); 
+                    
+                    if (piData.length < 10) {
+                        throw new Error("EMPTY_OR_CORRUPT_FILE");
+                    }
+                    
+                    // 激活界面
+                    statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
+                    statusBadge.className = "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";
+                    statusText.innerText = `数据已就绪 (共 ${piData.length.toLocaleString()} 位)`;
+                    inputEl.disabled = false;
+                    buttonEl.disabled = false;
+                })
+                .catch(err => {
+                    if (err.message === "404_NOT_FOUND") {
+                        triggerDiagnosticError(
+                            "文件未找到 (404 Error)",
+                            "网页无法在同级目录下找到名为 <code>pai.txt</code> 的文件。请检查你的文件名和后缀是否完全匹配。",
+                            [
+                                "📌 <b>常见原因 1：</b>Windows 系统默认隐藏了文件后缀。你可能把文件命名为了 <code>pai.txt.txt</code>（其实你多写了一个 .txt 后缀）。请在文件夹的「查看」中勾选「文件扩展名」进行检查。",
+                                "📌 <b>常见原因 2：</b>文件名大小写不一致。服务器对大小写极度敏感，请确保全小写 <code>pai.txt</code>，不要写成 <code>Pai.txt</code> 或 <code>PAI.txt</code>。"
+                            ]
+                        );
+                    } else if (err.message === "EMPTY_OR_CORRUPT_FILE") {
+                        triggerDiagnosticError(
+                            "空文件或格式错误",
+                            "成功读取了 <code>pai.txt</code>，但是里面没有获取到有效的圆周率数字，或者数字位数太少。",
+                            [
+                                "📌 请打开 <code>pai.txt</code> 检查里面是否确实粘贴了 100 万位的纯数字（例如：1415926535...）。"
+                            ]
+                        );
+                    } else {
+                        triggerDiagnosticError(
+                            "网络或跨域拦截",
+                            `加载文件时遇到了未知的网络异常。系统抛出的原始错误信息：<code class="bg-rose-100 px-1 py-0.5 rounded">${err.message}</code>`,
+                            [
+                                "📌 建议打开浏览器的开发者工具（按 F12 或 右键检查 -> 选择 Console 标签页），里面会有一行红色的报错，通常会写明是 CORS（跨域）问题还是别的问题。"
+                            ]
+                        );
+                    }
+                });
+        });
+
+        // 触发诊断错误面板
+        function triggerDiagnosticError(title, desc, guides) {
+            statusDot.className = "w-2 h-2 rounded-full bg-rose-500";
+            statusBadge.className = "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200";
+            statusText.innerText = "数据加载失败！";
+            
+            diagnosticPanel.classList.remove('hidden');
+            errorDescription.innerHTML = `<strong>[${title}]</strong> ${desc}`;
+            
+            solutionGuides.innerHTML = "";
+            guides.forEach(guide => {
+                const li = document.createElement('div');
+                li.className = "py-1.5 border-b border-rose-100 last:border-0";
+                li.innerHTML = guide;
+                solutionGuides.appendChild(li);
+            });
+        }
+
+        // 检索逻辑
+        function searchPi() {
+            const query = inputEl.value.trim();
+            resultEl.innerHTML = "";
+            resultEl.classList.remove('hidden');
+
+            if (!/^\d+$/.test(query)) {
+                showResultBox(false, "❌ 格式错误：请输入纯数字。");
+                return;
+            }
+
+            if (query.length < 2 || query.length > 20) {
+                showResultBox(false, "❌ 长度错误：数字长度必须在 2 到 20 位之间。");
+                return;
+            }
+
+            const index = piData.indexOf(query);
+
+            if (index === -1) {
+                showResultBox(false, `🔍 在当前前 ${piData.length.toLocaleString()} 位数据中，<strong>未找到</strong>数字串 [${query}]。`);
+            } else {
+                const startPos = index + 1;
+                const endPos = index + query.length;
+
+                const contextStart = Math.max(0, index - 5);
+                const contextEnd = Math.min(piData.length, index + query.length + 5);
+                
+                const beforeStr = piData.substring(contextStart, index);
+                const afterStr = piData.substring(index + query.length, contextEnd);
+                const preview = `...${beforeStr}<span class="bg-amber-200 text-amber-950 px-1 rounded font-bold">${query}</span>${afterStr}...`;
+
+                showResultBox(true, `
+                    <div class="text-emerald-800 font-semibold mb-2">🎉 查找成功！</div>
+                    <div class="text-sm">数字串 <code class="bg-emerald-100 px-1 py-0.5 rounded font-mono text-emerald-950">${query}</code> 位于：</div>
+                    <div class="text-xl font-bold my-2 text-slate-900">第 ${startPos.toLocaleString()} 位 到 第 ${endPos.toLocaleString()} 位</div>
+                    <div class="text-xs text-slate-500 mt-3 pt-3 border-t border-emerald-100">上下文预览：<span class="font-mono">${preview}</span></div>
+                `);
+            }
+        }
+
+        function showResultBox(isSuccess, htmlContent) {
+            resultEl.className = isSuccess 
+                ? "mt-6 p-5 bg-emerald-50 border border-emerald-200 rounded-xl text-left" 
+                : "mt-6 p-5 bg-rose-50 border border-rose-200 rounded-xl text-left text-rose-800 text-sm";
+            resultEl.innerHTML = htmlContent;
+        }
+
+        // 回车键快捷键
+        inputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !buttonEl.disabled) {
+                searchPi();
+            }
+        });
+    </script>
+</body>
+</html>
