@@ -20,13 +20,12 @@
 
     <div class="w-full max-w-lg bg-white rounded-3xl border border-neutral-100 p-8 sm:p-10 custom-shadow transition-all duration-300">
         
-        <!-- 头部信息 -->
         <div class="flex items-center justify-between mb-8">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center text-white font-serif text-lg font-bold">π</div>
                 <div>
-                    <h1 class="text-lg font-semibold tracking-tight text-neutral-900">Pi Finder</h1>
-                    <p class="text-xs text-neutral-400"> your pi圆周率检索器</p>
+                    <h1 class="text-lg font-semibold tracking-tight text-neutral-900">Your Pi</h1>
+                    <p class="text-xs text-neutral-400"> Your Pi圆周率检索器</p>
                 </div>
             </div>
             <div id="status" class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
@@ -38,10 +37,10 @@
         <!-- 模式切换 Tabs -->
         <div class="bg-neutral-100 p-1 rounded-2xl flex mb-8">
             <button id="tab-forward" onclick="switchMode('forward')" class="flex-1 py-2.5 text-sm font-medium rounded-xl transition-all bg-white text-neutral-900 shadow-sm">
-                数字位置
+                数字の位置
             </button>
             <button id="tab-reverse" onclick="switchMode('reverse')" class="flex-1 py-2.5 text-sm font-medium rounded-xl transition-all text-neutral-500 hover:text-neutral-900">
-                位置数字
+                位置の数字
             </button>
         </div>
 
@@ -82,7 +81,7 @@
                 </div>
             </div>
 
-            <p class="text-[11px] text-neutral-400 text-center">注：单次查询范围不能超过 100 位数字，最大上限为 ${piData.length.toLocaleString()}$ </p>
+            <p class="text-sm text-neutral-500"注：单次查询范围不能超过 100 位数字，最大上限为 ${piData.length.toLocaleString()}$ </p>
 
             <button id="extractBtn" onclick="extractFromPi()" disabled
                 class="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-medium py-4 px-6 rounded-2xl transition-all duration-200 transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed">
