@@ -25,8 +25,8 @@
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center text-white font-serif text-lg font-bold">π</div>
                 <div>
-                    <h1 class="text-lg font-semibold tracking-tight text-neutral-900">Your Pi</h1>
-                    <p class="text-xs text-neutral-400">Your PI圆周率位检索器</p>
+                    <h1 class="text-lg font-semibold tracking-tight text-neutral-900">Pi Finder</h1>
+                    <p class="text-xs text-neutral-400"> your pi圆周率检索器</p>
                 </div>
             </div>
             <div id="status" class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
@@ -38,10 +38,10 @@
         <!-- 模式切换 Tabs -->
         <div class="bg-neutral-100 p-1 rounded-2xl flex mb-8">
             <button id="tab-forward" onclick="switchMode('forward')" class="flex-1 py-2.5 text-sm font-medium rounded-xl transition-all bg-white text-neutral-900 shadow-sm">
-                数字找位置
+                数字位置
             </button>
             <button id="tab-reverse" onclick="switchMode('reverse')" class="flex-1 py-2.5 text-sm font-medium rounded-xl transition-all text-neutral-500 hover:text-neutral-900">
-                位置找数字
+                位置数字
             </button>
         </div>
 
@@ -72,17 +72,17 @@
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">起始位置</label>
-                    <input type="number" id="startInput" placeholder="例如: 1" min="1" disabled
+                    <input type="number" id="startInput" placeholder="例如: 79" min="79" disabled
                         class="w-full px-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl text-base font-semibold text-center text-neutral-900 placeholder-neutral-300 focus:outline-none focus:border-neutral-900 focus:bg-white transition-all">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">结束位置</label>
-                    <input type="number" id="endInput" placeholder="例如: 10" min="1" disabled
+                    <input type="number" id="endInput" placeholder="例如: 81" min="81" disabled
                         class="w-full px-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl text-base font-semibold text-center text-neutral-900 placeholder-neutral-300 focus:outline-none focus:border-neutral-900 focus:bg-white transition-all">
                 </div>
             </div>
 
-            <p class="text-[11px] text-neutral-400 text-center">注：单次查询范围不能超过 100 位数字，最大上限为${piData.length.toLocaleString()}。</p>
+            <p class="text-[11px] text-neutral-400 text-center">注：单次查询范围不能超过 100 位数字，最大上限为 ${piData.length.toLocaleString()}$ </p>
 
             <button id="extractBtn" onclick="extractFromPi()" disabled
                 class="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-medium py-4 px-6 rounded-2xl transition-all duration-200 transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed">
@@ -129,7 +129,7 @@
                     // 彻底过滤非数字字符
                     piData = text.replace(/[^0-9]/g, '');
                     
-                    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span>已载入 ${piData.length.toLocaleString()} 位`;
+                    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span>已载入 ${piData.length.toLocaleString()} 位`; 
                     statusEl.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700";
                     
                     // 激活全部表单和按钮
@@ -171,7 +171,6 @@
             searchPi();
         }
 
-        // 模式一：正向查找算法
         function searchPi() {
             const query = inputEl.value.trim();
             resultWrapper.classList.add('hidden');
@@ -232,7 +231,6 @@
             resultWrapper.classList.remove('hidden');
         }
 
-        // 模式二：反向查找算法 (位置找数字)
         function extractFromPi() {
             resultWrapper.classList.add('hidden');
             resultContent.innerHTML = "";
