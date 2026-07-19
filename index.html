@@ -20,12 +20,13 @@
 
     <div class="w-full max-w-lg bg-white rounded-3xl border border-neutral-100 p-8 sm:p-10 custom-shadow transition-all duration-300">
         
+        <!-- 头部信息 -->
         <div class="flex items-center justify-between mb-8">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center text-white font-serif text-lg font-bold">π</div>
                 <div>
                     <h1 class="text-lg font-semibold tracking-tight text-neutral-900">Pi Finder</h1>
-                    <p class="text-xs text-neutral-400">圆周率位数字检索</p>
+                    <p class="text-xs text-neutral-400">圆周率位双向检索器</p>
                 </div>
             </div>
             <div id="status" class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
@@ -34,11 +35,21 @@
             </div>
         </div>
 
-        <div class="space-y-6">
+        <!-- 模式切换 Tabs -->
+        <div class="bg-neutral-100 p-1 rounded-2xl flex mb-8">
+            <button id="tab-forward" onclick="switchMode('forward')" class="flex-1 py-2.5 text-sm font-medium rounded-xl transition-all bg-white text-neutral-900 shadow-sm">
+                数字找位置
+            </button>
+            <button id="tab-reverse" onclick="switchMode('reverse')" class="flex-1 py-2.5 text-sm font-medium rounded-xl transition-all text-neutral-500 hover:text-neutral-900">
+                位置找数字
+            </button>
+        </div>
+
+        <div id="panel-forward" class="space-y-6">
             <div>
                 <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">输入目标数字串 (2-20位)</label>
                 <div class="relative">
-                    <input type="text" id="userInput" placeholder="例如: 520" maxlength="20" disabled
+                    <input type="text" id="userInput" placeholder="例如: 114514" maxlength="20" disabled
                         class="w-full px-5 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl text-lg font-medium text-center text-neutral-900 placeholder-neutral-300 focus:outline-none focus:border-neutral-900 focus:bg-white transition-all tracking-widest">
                 </div>
             </div>
@@ -47,8 +58,8 @@
                 <span class="text-xs text-neutral-400 mr-1">快捷测试:</span>
                 <button onclick="setQuery('5201314')" class="px-3 py-1.5 text-xs bg-neutral-50 hover:bg-neutral-100 text-neutral-600 rounded-lg transition-colors">5201314</button>
                 <button onclick="setQuery('114514')" class="px-3 py-1.5 text-xs bg-neutral-50 hover:bg-neutral-100 text-neutral-600 rounded-lg transition-colors">114514</button>
-                <button onclick="setQuery('1998')" class="px-3 py-1.5 text-xs bg-neutral-50 hover:bg-neutral-100 text-neutral-600 rounded-lg transition-colors">1998</button>
-                <button onclick="setQuery('8888')" class="px-3 py-1.5 text-xs bg-neutral-50 hover:bg-neutral-100 text-neutral-600 rounded-lg transition-colors">8888</button>
+                <button onclick="setQuery('2026')" class="px-3 py-1.5 text-xs bg-neutral-50 hover:bg-neutral-100 text-neutral-600 rounded-lg transition-colors">2026</button>
+                <button onclick="setQuery('88888')" class="px-3 py-1.5 text-xs bg-neutral-50 hover:bg-neutral-100 text-neutral-600 rounded-lg transition-colors">88888</button>
             </div>
 
             <button id="searchBtn" onclick="searchPi()" disabled
@@ -57,16 +68,54 @@
             </button>
         </div>
 
-        <div id="resultWrapper" class="mt-8 pt-8 border-t border-neutral-50 hidden">
+        <div id="panel-reverse" class="space-y-6 hidden">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">起始位置</label>
+                    <input type="number" id="startInput" placeholder="例如: 1" min="1" disabled
+                        class="w-full px-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl text-base font-semibold text-center text-neutral-900 placeholder-neutral-300 focus:outline-none focus:border-neutral-900 focus:bg-white transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">结束位置</label>
+                    <input type="number" id="endInput" placeholder="例如: 10" min="1" disabled
+                        class="w-full px-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl text-base font-semibold text-center text-neutral-900 placeholder-neutral-300 focus:outline-none focus:border-neutral-900 focus:bg-white transition-all">
+                </div>
+            </div>
+
+            <p class="text-[11px] text-neutral-400 text-center">注：单次查询范围不能超过 100 位数字，最大上限为您载入的文件位数十万/百万。</p>
+
+            <button id="extractBtn" onclick="extractFromPi()" disabled
+                class="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-medium py-4 px-6 rounded-2xl transition-all duration-200 transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed">
+                立即提取数字
+            </button>
+        </div>
+
+        <!-- 结果展示区 -->
+        <div id="resultWrapper" class="mt-8 pt-8 border-t border-neutral-100 hidden">
             <div id="resultContent" class="space-y-4"></div>
         </div>
     </div>
 
     <script>
         let piData = "";
+        let currentMode = "forward"; // "forward" 或 "reverse"
+
         const statusEl = document.getElementById('status');
+        
+        // 正向模式元素
         const inputEl = document.getElementById('userInput');
         const buttonEl = document.getElementById('searchBtn');
+        const panelForward = document.getElementById('panel-forward');
+        const tabForward = document.getElementById('tab-forward');
+
+        // 反向模式元素
+        const startInputEl = document.getElementById('startInput');
+        const endInputEl = document.getElementById('endInput');
+        const extractBtnEl = document.getElementById('extractBtn');
+        const panelReverse = document.getElementById('panel-reverse');
+        const tabReverse = document.getElementById('tab-reverse');
+
+        // 公用结果元素
         const resultWrapper = document.getElementById('resultWrapper');
         const resultContent = document.getElementById('resultContent');
 
@@ -77,12 +126,18 @@
                     return response.text();
                 })
                 .then(text => {
+                    // 彻底过滤非数字字符
                     piData = text.replace(/[^0-9]/g, '');
                     
                     statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span>已载入 ${piData.length.toLocaleString()} 位`;
                     statusEl.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700";
+                    
+                    // 激活全部表单和按钮
                     inputEl.disabled = false;
                     buttonEl.disabled = false;
+                    startInputEl.disabled = false;
+                    endInputEl.disabled = false;
+                    extractBtnEl.disabled = false;
                 })
                 .catch(error => {
                     statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span>载入失败`;
@@ -90,12 +145,33 @@
                 });
         });
 
+        // 切换模式逻辑
+        function switchMode(mode) {
+            currentMode = mode;
+            resultWrapper.classList.add('hidden');
+            resultContent.innerHTML = "";
+
+            if (mode === 'forward') {
+                tabForward.className = "flex-1 py-2.5 text-sm font-medium rounded-xl transition-all bg-white text-neutral-900 shadow-sm";
+                tabReverse.className = "flex-1 py-2.5 text-sm font-medium rounded-xl transition-all text-neutral-500 hover:text-neutral-900";
+                panelForward.classList.remove('hidden');
+                panelReverse.classList.add('hidden');
+            } else {
+                tabReverse.className = "flex-1 py-2.5 text-sm font-medium rounded-xl transition-all bg-white text-neutral-900 shadow-sm";
+                tabForward.className = "flex-1 py-2.5 text-sm font-medium rounded-xl transition-all text-neutral-500 hover:text-neutral-900";
+                panelReverse.classList.remove('hidden');
+                panelForward.classList.add('hidden');
+            }
+        }
+
+        // 快捷键输入并查找
         function setQuery(val) {
             if (inputEl.disabled) return;
             inputEl.value = val;
             searchPi();
         }
 
+        // 模式一：正向查找算法
         function searchPi() {
             const query = inputEl.value.trim();
             resultWrapper.classList.add('hidden');
@@ -144,7 +220,7 @@
                             <span class="text-xs font-medium text-neutral-400 block mb-2">上下文预览</span>
                             <div class="font-mono text-sm tracking-wider text-neutral-500 bg-white border border-neutral-100 px-4 py-3 rounded-xl flex justify-between items-center">
                                 <span>...${beforeStr}<span class="bg-neutral-900 text-white px-1.5 py-0.5 rounded-md font-bold">${query}</span>${afterStr}...</span>
-                                <button onclick="copyResult('${startPos}', '${endPos}')" class="text-neutral-400 hover:text-neutral-900 ml-3 transition-colors" title="复制结果">
+                                <button onclick="copyResult('在圆周率第 ${startPos} 位至 ${endPos} 位找到了我查询的数字：${query}！')" class="text-neutral-400 hover:text-neutral-900 ml-3 transition-colors" title="复制结果">
                                     <i data-lucide="copy" class="w-4 h-4"></i>
                                 </button>
                             </div>
@@ -153,6 +229,57 @@
                 `;
                 lucide.createIcons();
             }
+            resultWrapper.classList.remove('hidden');
+        }
+
+        // 模式二：反向查找算法 (位置找数字)
+        function extractFromPi() {
+            resultWrapper.classList.add('hidden');
+            resultContent.innerHTML = "";
+
+            const startVal = parseInt(startInputEl.value);
+            const endVal = parseInt(endInputEl.value);
+
+            if (isNaN(startVal) || isNaN(endVal) || startVal < 1 || endVal < 1) {
+                showFeedback("请输入有效的正整数位置", false);
+                return;
+            }
+            if (startVal > endVal) {
+                showFeedback("起始位置不能大于结束位置", false);
+                return;
+            }
+            if (endVal > piData.length) {
+                showFeedback(`超出数据范围，当前最大支持第 ${piData.length.toLocaleString()} 位`, false);
+                return;
+            }
+            
+            const range = endVal - startVal + 1;
+            if (range > 100) {
+                showFeedback(`提取范围太大 (${range}位)。单次最多提取 100 位数字以保持展示优雅。`, false);
+                return;
+            }
+
+            // 数据提取（切片，因为是第 X 位，所以索引要 -1）
+            const extractedStr = piData.substring(startVal - 1, endVal);
+
+            resultContent.innerHTML = `
+                <div class="p-6 rounded-2xl bg-neutral-50 border border-neutral-100 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-medium text-neutral-400 uppercase tracking-wider">从第 ${startVal.toLocaleString()} 至 ${endVal.toLocaleString()} 位</span>
+                        <span class="text-xs font-semibold px-2.5 py-1 bg-neutral-900 text-white rounded-md">${range} 位数</span>
+                    </div>
+                    
+                    <div class="pt-2">
+                        <div class="font-mono text-xl font-bold tracking-wider text-neutral-900 bg-white border border-neutral-100 px-5 py-4 rounded-xl flex justify-between items-center break-all">
+                            <span>${extractedStr}</span>
+                            <button onclick="copyResult('圆周率第 ${startVal} 至 ${endVal} 位的数字是：${extractedStr}')" class="text-neutral-400 hover:text-neutral-900 ml-4 shrink-0 transition-colors" title="复制结果">
+                                <i data-lucide="copy" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
             resultWrapper.classList.remove('hidden');
         }
 
@@ -165,8 +292,7 @@
             resultWrapper.classList.remove('hidden');
         }
 
-        function copyResult(start, end) {
-            const textToCopy = `在圆周率第 ${start} 位至 ${end} 位找到了我查询的数字！`;
+        function copyResult(textToCopy) {
             const tempInput = document.createElement("input");
             tempInput.value = textToCopy;
             document.body.appendChild(tempInput);
@@ -180,11 +306,14 @@
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 2000);
         }
-
         inputEl.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !buttonEl.disabled) {
-                searchPi();
-            }
+            if (e.key === 'Enter' && !buttonEl.disabled) searchPi();
+        });
+        startInputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !extractBtnEl.disabled) extractFromPi();
+        });
+        endInputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !extractBtnEl.disabled) extractFromPi();
         });
     </script>
 </body>
