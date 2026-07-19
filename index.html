@@ -20,7 +20,7 @@
 
     <div class="w-full max-w-lg bg-white rounded-3xl border border-neutral-100 p-8 sm:p-10 custom-shadow transition-all duration-300">
         
-        <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center text-white font-serif text-lg font-bold">π</div>
                 <div>
@@ -34,6 +34,23 @@
             </div>
         </div>
 
+        <!-- 文件上传区域 -->
+        <div class="mb-8 p-4 border-2 border-dashed border-neutral-200 rounded-2xl hover:border-neutral-400 transition-colors">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+                <div class="flex items-center gap-3">
+                    <label for="fileInput" class="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white text-sm rounded-xl cursor-pointer hover:bg-neutral-800 transition-colors">
+                        <i data-lucide="upload" class="w-4 h-4"></i>
+                        上传文件
+                    </label>
+                    <input type="file" id="fileInput" accept=".txt" class="hidden" onchange="handleFileUpload(event)">
+                    <button onclick="resetToDefault()" class="text-sm text-neutral-500 hover:text-neutral-700 transition-colors">
+                        重置为默认
+                    </button>
+                </div>
+                <p class="text-xs text-neutral-400">支持上传纯数字txt文件</p>
+            </div>
+        </div>
+
         <!-- 模式切换 Tabs -->
         <div class="bg-neutral-100 p-1 rounded-2xl flex mb-8">
             <button id="tab-forward" onclick="switchMode('forward')" class="flex-1 py-2.5 text-sm font-medium rounded-xl transition-all bg-white text-neutral-900 shadow-sm">
@@ -41,6 +58,9 @@
             </button>
             <button id="tab-reverse" onclick="switchMode('reverse')" class="flex-1 py-2.5 text-sm font-medium rounded-xl transition-all text-neutral-500 hover:text-neutral-900">
                 位置の数字
+            </button>
+            <button id="tab-stats" onclick="switchMode('stats')" class="flex-1 py-2.5 text-sm font-medium rounded-xl transition-all text-neutral-500 hover:text-neutral-900">
+                统计信息
             </button>
         </div>
 
@@ -61,10 +81,23 @@
                 <button onclick="setQuery('88888')" class="px-3 py-1.5 text-xs bg-neutral-50 hover:bg-neutral-100 text-neutral-600 rounded-lg transition-colors">88888</button>
             </div>
 
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-2 text-sm text-neutral-600">
+                    <input type="checkbox" id="findAllCheckbox" class="w-4 h-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-500">
+                    <span>查找所有出现位置</span>
+                </label>
+            </div>
+
             <button id="searchBtn" onclick="searchPi()" disabled
                 class="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-medium py-4 px-6 rounded-2xl transition-all duration-200 transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed">
                 立即查找位置
             </button>
+
+            <div id="historySection" class="hidden">
+                <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">搜索历史</label>
+                <div id="historyList" class="flex flex-wrap gap-2"></div>
+                <button onclick="clearHistory()" class="text-xs text-neutral-400 hover:text-neutral-600 mt-3 transition-colors">清空历史</button>
+            </div>
         </div>
 
         <div id="panel-reverse" class="space-y-6 hidden">
@@ -81,12 +114,16 @@
                 </div>
             </div>
 
-            <p class="text-sm text-neutral-500"注：单次查询范围不能超过 100 位数字，最大上限为 ${piData.length.toLocaleString()}$ </p>
+            <p class="text-sm text-neutral-500" id="rangeHint">注：单次查询范围不能超过 100 位数字</p>
 
             <button id="extractBtn" onclick="extractFromPi()" disabled
                 class="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-medium py-4 px-6 rounded-2xl transition-all duration-200 transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed">
                 立即提取数字
             </button>
+        </div>
+
+        <div id="panel-stats" class="space-y-6 hidden">
+            <div id="statsContent"></div>
         </div>
 
         <!-- 结果展示区 -->
@@ -97,7 +134,9 @@
 
     <script>
         let piData = "";
-        let currentMode = "forward"; // "forward" 或 "reverse"
+        let currentMode = "forward";
+        let searchHistory = [];
+        let isUsingCustomData = false;
 
         const statusEl = document.getElementById('status');
         
@@ -106,6 +145,9 @@
         const buttonEl = document.getElementById('searchBtn');
         const panelForward = document.getElementById('panel-forward');
         const tabForward = document.getElementById('tab-forward');
+        const findAllCheckbox = document.getElementById('findAllCheckbox');
+        const historySection = document.getElementById('historySection');
+        const historyList = document.getElementById('historyList');
 
         // 反向模式元素
         const startInputEl = document.getElementById('startInput');
@@ -113,35 +155,204 @@
         const extractBtnEl = document.getElementById('extractBtn');
         const panelReverse = document.getElementById('panel-reverse');
         const tabReverse = document.getElementById('tab-reverse');
+        const rangeHint = document.getElementById('rangeHint');
+
+        // 统计模式元素
+        const tabStats = document.getElementById('tab-stats');
+        const panelStats = document.getElementById('panel-stats');
+        const statsContent = document.getElementById('statsContent');
 
         // 公用结果元素
         const resultWrapper = document.getElementById('resultWrapper');
         const resultContent = document.getElementById('resultContent');
 
-        window.addEventListener('DOMContentLoaded', () => {
+        // 加载历史记录
+        function loadHistory() {
+            const saved = localStorage.getItem('piSearchHistory');
+            if (saved) {
+                searchHistory = JSON.parse(saved);
+                renderHistory();
+            }
+        }
+
+        // 保存历史记录
+        function saveHistory() {
+            localStorage.setItem('piSearchHistory', JSON.stringify(searchHistory));
+        }
+
+        // 渲染历史记录
+        function renderHistory() {
+            if (searchHistory.length > 0) {
+                historySection.classList.remove('hidden');
+                historyList.innerHTML = searchHistory.map((item, index) => 
+                    `<button onclick="setQuery('${item}')" class="px-3 py-1.5 text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition-colors">${item}</button>`
+                ).join('');
+            } else {
+                historySection.classList.add('hidden');
+            }
+        }
+
+        // 添加到历史记录
+        function addToHistory(query) {
+            if (!searchHistory.includes(query)) {
+                searchHistory.unshift(query);
+                if (searchHistory.length > 10) {
+                    searchHistory.pop();
+                }
+                saveHistory();
+                renderHistory();
+            }
+        }
+
+        // 清空历史记录
+        function clearHistory() {
+            searchHistory = [];
+            saveHistory();
+            renderHistory();
+        }
+
+        // 查找所有出现位置
+        function findAllOccurrences(text, pattern) {
+            const indices = [];
+            let index = text.indexOf(pattern);
+            while (index !== -1) {
+                indices.push(index);
+                index = text.indexOf(pattern, index + 1);
+            }
+            return indices;
+        }
+
+        // 计算数字统计
+        function calculateStats() {
+            const counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+            for (let i = 0; i < piData.length; i++) {
+                counts[parseInt(piData[i])]++;
+            }
+            
+            let maxConsecutive = 1;
+            let currentConsecutive = 1;
+            let maxDigit = piData[0];
+            for (let i = 1; i < piData.length; i++) {
+                if (piData[i] === piData[i-1]) {
+                    currentConsecutive++;
+                    if (currentConsecutive > maxConsecutive) {
+                        maxConsecutive = currentConsecutive;
+                        maxDigit = piData[i];
+                    }
+                } else {
+                    currentConsecutive = 1;
+                }
+            }
+            
+            return { counts, maxConsecutive, maxDigit };
+        }
+
+        // 渲染统计信息
+        function renderStats() {
+            const { counts, maxConsecutive, maxDigit } = calculateStats();
+            const total = piData.length;
+            
+            statsContent.innerHTML = `
+                <div class="space-y-4">
+                    <div class="p-4 rounded-2xl bg-neutral-50 border border-neutral-100">
+                        <p class="text-xs text-neutral-400 mb-2">总位数</p>
+                        <p class="text-3xl font-bold text-neutral-900">${total.toLocaleString()}</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        ${counts.map((count, i) => `
+                            <div class="p-3 rounded-xl bg-neutral-50 border border-neutral-100">
+                                <p class="text-xs text-neutral-400">数字 ${i}</p>
+                                <p class="text-lg font-bold text-neutral-900">${count.toLocaleString()}</p>
+                                <p class="text-xs text-neutral-500">${(count / total * 100).toFixed(2)}%</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="p-4 rounded-2xl bg-neutral-50 border border-neutral-100">
+                        <p class="text-xs text-neutral-400 mb-2">最长连续相同数字</p>
+                        <p class="text-xl font-bold text-neutral-900">${maxConsecutive} 个 ${maxDigit}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 更新数据和UI
+        function updateData(text, isCustom = false) {
+            piData = text.replace(/[^0-9]/g, '');
+            isUsingCustomData = isCustom;
+            
+            if (piData.length === 0) {
+                statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span>未找到有效数字`;
+                statusEl.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700";
+                return;
+            }
+
+            const dataName = isCustom ? '自定义数据' : '默认圆周率';
+            statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span>已载入 ${dataName} ${piData.length.toLocaleString()} 位`;
+            statusEl.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700";
+            
+            rangeHint.textContent = `注：单次查询范围不能超过 100 位数字，最大上限为 ${piData.length.toLocaleString()}`;
+            
+            // 激活全部表单和按钮
+            inputEl.disabled = false;
+            buttonEl.disabled = false;
+            startInputEl.disabled = false;
+            endInputEl.disabled = false;
+            extractBtnEl.disabled = false;
+
+            // 清空之前的搜索结果
+            resultWrapper.classList.add('hidden');
+            resultContent.innerHTML = "";
+        }
+
+        // 处理文件上传
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                updateData(e.target.result, true);
+            };
+            reader.readAsText(file);
+        }
+
+        // 重置为默认数据
+        function resetToDefault() {
+            document.getElementById('fileInput').value = '';
+            statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>加载数据中`;
+            statusEl.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700";
+            
             fetch('pai.txt')
                 .then(response => {
                     if (!response.ok) throw new Error('Load failed');
                     return response.text();
                 })
                 .then(text => {
-                    // 彻底过滤非数字字符
-                    piData = text.replace(/[^0-9]/g, '');
-                    
-                    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span>已载入 ${piData.length.toLocaleString()} 位`; 
-                    statusEl.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700";
-                    
-                    // 激活全部表单和按钮
-                    inputEl.disabled = false;
-                    buttonEl.disabled = false;
-                    startInputEl.disabled = false;
-                    endInputEl.disabled = false;
-                    extractBtnEl.disabled = false;
+                    updateData(text, false);
                 })
                 .catch(error => {
                     statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span>载入失败`;
                     statusEl.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700";
                 });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadHistory();
+            fetch('pai.txt')
+                .then(response => {
+                    if (!response.ok) throw new Error('Load failed');
+                    return response.text();
+                })
+                .then(text => {
+                    updateData(text, false);
+                })
+                .catch(error => {
+                    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span>载入失败`;
+                    statusEl.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700";
+                });
+            lucide.createIcons();
         });
 
         // 切换模式逻辑
@@ -150,16 +361,23 @@
             resultWrapper.classList.add('hidden');
             resultContent.innerHTML = "";
 
+            tabForward.className = "flex-1 py-2.5 text-sm font-medium rounded-xl transition-all text-neutral-500 hover:text-neutral-900";
+            tabReverse.className = "flex-1 py-2.5 text-sm font-medium rounded-xl transition-all text-neutral-500 hover:text-neutral-900";
+            tabStats.className = "flex-1 py-2.5 text-sm font-medium rounded-xl transition-all text-neutral-500 hover:text-neutral-900";
+            panelForward.classList.add('hidden');
+            panelReverse.classList.add('hidden');
+            panelStats.classList.add('hidden');
+
             if (mode === 'forward') {
                 tabForward.className = "flex-1 py-2.5 text-sm font-medium rounded-xl transition-all bg-white text-neutral-900 shadow-sm";
-                tabReverse.className = "flex-1 py-2.5 text-sm font-medium rounded-xl transition-all text-neutral-500 hover:text-neutral-900";
                 panelForward.classList.remove('hidden');
-                panelReverse.classList.add('hidden');
-            } else {
+            } else if (mode === 'reverse') {
                 tabReverse.className = "flex-1 py-2.5 text-sm font-medium rounded-xl transition-all bg-white text-neutral-900 shadow-sm";
-                tabForward.className = "flex-1 py-2.5 text-sm font-medium rounded-xl transition-all text-neutral-500 hover:text-neutral-900";
                 panelReverse.classList.remove('hidden');
-                panelForward.classList.add('hidden');
+            } else if (mode === 'stats') {
+                tabStats.className = "flex-1 py-2.5 text-sm font-medium rounded-xl transition-all bg-white text-neutral-900 shadow-sm";
+                panelStats.classList.remove('hidden');
+                if (piData) renderStats();
             }
         }
 
@@ -184,49 +402,105 @@
                 return;
             }
 
-            const index = piData.indexOf(query);
+            addToHistory(query);
 
-            if (index === -1) {
-                resultContent.innerHTML = `
-                    <div class="p-5 rounded-2xl bg-neutral-50 border border-neutral-100 text-center">
-                        <p class="text-sm text-neutral-500">在当前前 ${piData.length.toLocaleString()} 位中，未找到此数字串。</p>
-                    </div>
-                `;
-            } else {
-                const startPos = index + 1;
-                const endPos = index + query.length;
+            const findAll = findAllCheckbox.checked;
 
-                const contextStart = Math.max(0, index - 6);
-                const contextEnd = Math.min(piData.length, index + query.length + 6);
-                const beforeStr = piData.substring(contextStart, index);
-                const afterStr = piData.substring(index + query.length, contextEnd);
-
-                resultContent.innerHTML = `
-                    <div class="p-6 rounded-2xl bg-neutral-50 border border-neutral-100 space-y-4">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="text-xs font-medium text-neutral-400">起始位置</span>
-                                <p class="text-3xl font-semibold text-neutral-900 mt-1">${startPos.toLocaleString()}</p>
-                            </div>
-                            <div class="text-right">
-                                <span class="text-xs font-medium text-neutral-400">结束位置</span>
-                                <p class="text-3xl font-semibold text-neutral-900 mt-1">${endPos.toLocaleString()}</p>
-                            </div>
+            if (findAll) {
+                const indices = findAllOccurrences(piData, query);
+                
+                if (indices.length === 0) {
+                    resultContent.innerHTML = `
+                        <div class="p-5 rounded-2xl bg-neutral-50 border border-neutral-100 text-center">
+                            <p class="text-sm text-neutral-500">在当前前 ${piData.length.toLocaleString()} 位中，未找到此数字串。</p>
                         </div>
+                    `;
+                } else {
+                    const maxShow = Math.min(indices.length, 10);
+                    let resultsHTML = `
+                        <div class="p-6 rounded-2xl bg-neutral-50 border border-neutral-100 space-y-4">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-xs font-medium text-neutral-400">共找到</span>
+                                    <p class="text-3xl font-semibold text-neutral-900 mt-1">${indices.length.toLocaleString()} 处</p>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                    `;
+                    
+                    for (let i = 0; i < maxShow; i++) {
+                        const index = indices[i];
+                        const startPos = index + 1;
+                        const contextStart = Math.max(0, index - 6);
+                        const contextEnd = Math.min(piData.length, index + query.length + 6);
+                        const beforeStr = piData.substring(contextStart, index);
+                        const afterStr = piData.substring(index + query.length, contextEnd);
                         
-                        <div class="pt-4 border-t border-neutral-200/50">
-                            <span class="text-xs font-medium text-neutral-400 block mb-2">上下文预览</span>
-                            <div class="font-mono text-sm tracking-wider text-neutral-500 bg-white border border-neutral-100 px-4 py-3 rounded-xl flex justify-between items-center">
-                                <span>...${beforeStr}<span class="bg-neutral-900 text-white px-1.5 py-0.5 rounded-md font-bold">${query}</span>${afterStr}...</span>
-                                <button onclick="copyResult('在圆周率第 ${startPos} 位至 ${endPos} 位找到了我查询的数字：${query}！')" class="text-neutral-400 hover:text-neutral-900 ml-3 transition-colors" title="复制结果">
-                                    <i data-lucide="copy" class="w-4 h-4"></i>
-                                </button>
+                        resultsHTML += `
+                            <div class="font-mono text-sm tracking-wider text-neutral-500 bg-white border border-neutral-100 px-4 py-3 rounded-xl">
+                                <div class="text-xs text-neutral-400 mb-1">第 ${i + 1} 次出现 · 起始位置 ${startPos.toLocaleString()}</div>
+                                <div>...${beforeStr}<span class="bg-neutral-900 text-white px-1.5 py-0.5 rounded-md font-bold">${query}</span>${afterStr}...</div>
+                            </div>
+                        `;
+                    }
+                    
+                    if (indices.length > 10) {
+                        resultsHTML += `<p class="text-xs text-neutral-500 text-center">...还有 ${indices.length - 10} 处未显示</p>`;
+                    }
+                    
+                    resultsHTML += `
                             </div>
                         </div>
-                    </div>
-                `;
-                lucide.createIcons();
+                    `;
+                    
+                    resultContent.innerHTML = resultsHTML;
+                }
+            } else {
+                const index = piData.indexOf(query);
+
+                if (index === -1) {
+                    resultContent.innerHTML = `
+                        <div class="p-5 rounded-2xl bg-neutral-50 border border-neutral-100 text-center">
+                            <p class="text-sm text-neutral-500">在当前前 ${piData.length.toLocaleString()} 位中，未找到此数字串。</p>
+                        </div>
+                    `;
+                } else {
+                    const startPos = index + 1;
+                    const endPos = index + query.length;
+
+                    const contextStart = Math.max(0, index - 6);
+                    const contextEnd = Math.min(piData.length, index + query.length + 6);
+                    const beforeStr = piData.substring(contextStart, index);
+                    const afterStr = piData.substring(index + query.length, contextEnd);
+
+                    resultContent.innerHTML = `
+                        <div class="p-6 rounded-2xl bg-neutral-50 border border-neutral-100 space-y-4">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-xs font-medium text-neutral-400">起始位置</span>
+                                    <p class="text-3xl font-semibold text-neutral-900 mt-1">${startPos.toLocaleString()}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-xs font-medium text-neutral-400">结束位置</span>
+                                    <p class="text-3xl font-semibold text-neutral-900 mt-1">${endPos.toLocaleString()}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="pt-4 border-t border-neutral-200/50">
+                                <span class="text-xs font-medium text-neutral-400 block mb-2">上下文预览</span>
+                                <div class="font-mono text-sm tracking-wider text-neutral-500 bg-white border border-neutral-100 px-4 py-3 rounded-xl flex justify-between items-center">
+                                    <span>...${beforeStr}<span class="bg-neutral-900 text-white px-1.5 py-0.5 rounded-md font-bold">${query}</span>${afterStr}...</span>
+                                    <button onclick="copyResult('在圆周率第 ${startPos} 位至 ${endPos} 位找到了我查询的数字：${query}！')" class="text-neutral-400 hover:text-neutral-900 ml-3 transition-colors" title="复制结果">
+                                        <i data-lucide="copy" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                }
             }
+            
             resultWrapper.classList.remove('hidden');
         }
 
@@ -256,7 +530,6 @@
                 return;
             }
 
-            // 数据提取（切片，因为是第 X 位，所以索引要 -1）
             const extractedStr = piData.substring(startVal - 1, endVal);
 
             resultContent.innerHTML = `
